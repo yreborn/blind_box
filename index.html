@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>盲盒买单挑战</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #FC466B, #3F5EFB);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .boxes-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .box {
+            aspect-ratio: 1/1;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(0,0,0,0.3);
+        }
+        
+        .box-front {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        
+        .box-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.6s;
+            transform: rotateY(180deg);
+            transform-style: preserve-3d;
+            background-color: #fff;
+        }
+        
+        .box.flipped .box-front {
+            transform: rotateY(180deg);
+        }
+        
+        .box.flipped .box-back {
+            transform: rotateY(0deg);
+        }
+        
+        .box-icon {
+            font-size: 40px;
+        }
+        
+        .box-result {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .pay-result {
+            color: #e74c3c;
+        }
+        
+        .empty-result {
+            color: #7f8c8d;
+        }
+        
+        .reset-btn {
+            margin-top: 30px;
+            padding: 12px 25px;
+            background-color: white;
+            color: #FC466B;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        
+        .reset-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+        
+        .result-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        
+        .result-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .result-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 80%;
+            transform: translateY(20px);
+            transition: transform 0.3s;
+        }
+        
+        .result-overlay.show .result-content {
+            transform: translateY(0);
+        }
+        
+        .result-title {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .result-message {
+            font-size: 20px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .result-btn {
+            padding: 10px 20px;
+            background-color: #FC466B;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .result-btn:hover {
+            background-color: #e74c3c;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            opacity: 0;
+        }
+        
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100px); opacity: 1; }
+            100% { transform: translateY(1000px); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>盲盒买单挑战</h1>
+        <p>选择一个盲盒，看看谁来买单！</p>
+    </div>
+    
+    <div class="boxes-container" id="boxes-container">
+        <!-- 盲盒将在这里动态生成 -->
+    </div>
+    
+    <button class="reset-btn" id="reset-btn">重新开始</button>
+    
+    <div class="result-overlay" id="result-overlay">
+        <div class="result-content">
+            <h2 class="result-title">挑战结果</h2>
+            <p class="result-message" id="result-message">恭喜你逃过一劫！</p>
+            <button class="result-btn" id="close-result">确定</button>
+        </div>
+    </div>
+
+    <script>
+        // 获取DOM元素
+        const boxesContainer = document.getElementById('boxes-container');
+        const resetBtn = document.getElementById('reset-btn');
+        const resultOverlay = document.getElementById('result-overlay');
+        const resultMessage = document.getElementById('result-message');
+        const closeResultBtn = document.getElementById('close-result');
+        
+        // 游戏状态
+        let payingBoxIndex = -1;
+        let isGameOver = false;
+        let openedBoxes = 0;
+        
+        // 初始化游戏
+        function initGame() {
+            // 清空容器
+            boxesContainer.innerHTML = '';
+            
+            // 重置游戏状态
+            isGameOver = false;
+            openedBoxes = 0;
+            
+            // 随机选择一个盒子作为"你买单"
+            payingBoxIndex = Math.floor(Math.random() * 9);
+            
+            // 创建9个盒子
+            for (let i = 0; i < 9; i++) {
+                const box = document.createElement('div');
+                box.className = 'box';
+                box.dataset.index = i;
+                
+                // 创建盒子正面
+                const boxFront = document.createElement('div');
+                boxFront.className = 'box-front';
+                boxFront.innerHTML = '<div class="box-icon">📦</div>';
+                
+                // 创建盒子背面
+                const boxBack = document.createElement('div');
+                boxBack.className = 'box-back';
+                
+                // 设置盒子内容
+                if (i === payingBoxIndex) {
+                    boxBack.innerHTML = '<div class="box-result pay-result">你买单</div>';
+                } else {
+                    boxBack.innerHTML = '<div class="box-result empty-result">空</div>';
+                }
+                
+                // 添加点击事件
+                box.addEventListener('click', () => openBox(box));
+                
+                // 添加到DOM
+                box.appendChild(boxFront);
+                box.appendChild(boxBack);
+                boxesContainer.appendChild(box);
+            }
+        }
+        
+        // 打开盒子
+        function openBox(box) {
+            // 如果游戏已结束或盒子已打开，则不执行操作
+            if (isGameOver || box.classList.contains('flipped')) {
+                return;
+            }
+            
+            // 翻转盒子
+            box.classList.add('flipped');
+            openedBoxes++;
+            
+            // 检查是否点中"你买单"
+            const boxIndex = parseInt(box.dataset.index);
+            if (boxIndex === payingBoxIndex) {
+                // 显示结果
+                setTimeout(() => {
+                    resultMessage.textContent = '哈哈，今天你买单！';
+                    resultOverlay.classList.add('show');
+                    createConfetti();
+                    isGameOver = true;
+                }, 600);
+            } else if (openedBoxes === 8) {
+                // 只剩下"你买单"的盒子没开
+                setTimeout(() => {
+                    resultMessage.textContent = '你已经知道结果了...';
+                    resultOverlay.classList.add('show');
+                    isGameOver = true;
+                }, 600);
+            }
+        }
+        
+        // 创建五彩纸屑效果
+        function createConfetti() {
+            const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
+            
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                
+                // 随机位置和颜色
+                const x = Math.random() * window.innerWidth;
+                confetti.style.left = `${x}px`;
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                // 设置动画
+                confetti.style.animation = `confetti-fall ${1 + Math.random() * 3}s linear forwards`;
+                confetti.style.animationDelay = `${Math.random() * 2}s`;
+                
+                document.body.appendChild(confetti);
+                
+                // 动画结束后移除
+                confetti.addEventListener('animationend', () => {
+                    document.body.removeChild(confetti);
+                });
+            }
+        }
+        
+        // 重置游戏
+        function resetGame() {
+            initGame();
+        }
+        
+        // 关闭结果弹窗
+        function closeResult() {
+            resultOverlay.classList.remove('show');
+        }
+        
+        // 事件监听
+        resetBtn.addEventListener('click', resetGame);
+        closeResultBtn.addEventListener('click', closeResult);
+        
+        // 初始化游戏
+        initGame();
+    </script>
+</body>
+</html>
